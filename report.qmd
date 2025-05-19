@@ -1,0 +1,88 @@
+---
+toc: false
+format:
+  pdf:
+    documentclass: report
+    header-includes:
+      - \usepackage{fontspec}
+      - \usepackage{caption}
+      - \setmainfont{Calibri}
+      - \AtBeginDocument{\floatplacement{table}{H}}
+    geometry:
+      - top=1in
+      - bottom=1in
+      - left=1in
+      - right=1in
+    fontsize: 12pt
+format-links: false
+editor: source
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(dplyr)
+library(readxl)
+library(stringr)
+library(kableExtra)
+```
+
+# PrioScout Swab Report
+
+![](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ17T5GtEiY8l0gX_l8AvlgKL54z92lDOwV9A&s){width="100%"}
+
+```{r Initialize, echo=FALSE, eval=TRUE}
+calcs <- read.csv("data/calculations.csv", check.names = FALSE)
+results <- read.csv("data/results.csv", check.names = FALSE)
+
+sample_number <- nrow(filter(results, !(`Sample IDs` %in% c("N", "P"))))
+```
+
+<!-- This project consisted of `{r} sample_number` PrioScout swabs. -->
+
+## Methodology
+Swabs were run in 4 replicates. Results were compared against the negative plate control using a t-test. Metrics analyzed were maxpoint ratio (MPR) and maximum slope (MS). The p-values for each metric must be ≤ 0.05 and more than 50% of replicates must have crossed a threshold of twice the background fluorescence for a sample to be considered detected. If a sample was only positive for one or two of the three metrics, it was designated as "weak suspect" or "strong suspect", respectively.
+
+```{r, echo=FALSE}
+
+background_list <- list(
+  "Detected" = "#99023B",
+  "Strong Suspect" = "#7C2C62",
+  "Weak Suspect" = "#5F5589",
+  "Not Detected" = "white"
+)
+
+text_list = list(
+  "Detected" = "white",
+  "Strong Suspect" = "white",
+  "Weak Suspect" = "white",
+  "Not Detected" = "black"
+)
+
+results %>%
+  select(c(1, 18:22)) %>%
+  filter(!(`Sample IDs` %in% c("N", "P"))) %>%
+  rename_all(~ str_replace(., "_", " ")) %>%
+  mutate_all(
+    ~ cell_spec(
+      .,
+      background = background_list[Result],
+      color = text_list[Result]
+    )
+  ) %>%
+  kable(
+    booktabs = TRUE,
+    longtable = TRUE,
+    linesep = "",
+    format = "latex",
+    escape = FALSE,
+    align = "c",
+    caption = "Results of RT-QuIC testing. Samples were given a result of 'Not Detected', 'Weak Suspect', 'Strong Suspect', or 'Detected' if it was positive for zero, one, two, or three metrics, respectively."
+  ) %>%
+  kable_styling(
+    # full_width = TRUE,
+    latex_options = c("hold_position", "repeat_header")
+  )
+```
+
+![](figures/summary.png)
+
+
