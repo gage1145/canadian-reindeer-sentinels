@@ -4,8 +4,8 @@ library(quicR)
 library(stringr)
 library(openxlsx)
 library(readxl)
-library(lme4)
-library(emmeans)
+# library(lme4)
+# library(emmeans)
 
 
 
@@ -58,8 +58,8 @@ samples <- unique(calcs$`Sample IDs`)
 
 get_results <- function(samples, metric) {
   
-  t_test <- function(name, metric) {
-    data <- subset(calcs, `Sample IDs` %in% c(name, "N"))
+  t_test <- function(sample) {
+    data <- subset(calcs, `Sample IDs` %in% c(sample, "N"))
     t.test(
       data[[metric]], 
       data[which(data$`Sample IDs` == "N"),][[metric]],
@@ -67,7 +67,7 @@ get_results <- function(samples, metric) {
     )
   }
   
-  sapply(samples, t_test, metric = metric) %>%
+  sapply(samples, t_test) %>%
     t() %>%
     as.data.frame() %>%
     mutate(
@@ -96,12 +96,13 @@ counts <- calcs %>%
   group_by(`Sample IDs`) %>%
   summarize(
     counts = n(),
-    thres_pos = sum(crossed) / counts > 0.5
+    crossed = sum(crossed) / counts,
+    thres_pos = crossed >= 0.5
   )
 
 results <- calcs %>%
   group_by(`Sample IDs`) %>%
-  summarise_at(vars(MPR:RAF), list(mean=mean, sd=sd, min=min, max=max)) %>%
+  summarise_at(vars(MPR:RAF), list(mean=mean, sd=sd)) %>%
   left_join(counts) %>%
   left_join(results_MPR) %>%
   left_join(results_MS) %>%
@@ -114,13 +115,9 @@ results <- calcs %>%
       MPR_pvalue < 0.05 & MS_pvalue < 0.05 & thres_pos,
       "Detected",
       ifelse(
-        (MPR_pvalue < 0.05) + (MS_pvalue < 0.05) + thres_pos == 2,
-        "Strong Suspect",
-        ifelse(
-          (MPR_pvalue < 0.05) + (MS_pvalue < 0.05) + thres_pos == 1,
-          "Weak Suspect",     
-          "Not Detected"
-        )
+        thres_pos & (MPR_pvalue > 0.05 | MS_pvalue > 0.05),
+        "Suspect",
+        "Not Detected"
       )
     )
   ) %>%
