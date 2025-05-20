@@ -25,7 +25,7 @@ library(stringr)
 library(kableExtra)
 ```
 
-# PrioScout Swab Report
+# Canadian Reindeer PrioScout Swab Report
 
 ![](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ17T5GtEiY8l0gX_l8AvlgKL54z92lDOwV9A&s){width="100%"}
 
@@ -34,31 +34,40 @@ calcs <- read.csv("data/calculations.csv", check.names = FALSE)
 results <- read.csv("data/results.csv", check.names = FALSE)
 
 sample_number <- nrow(filter(results, !(`Sample IDs` %in% c("N", "P"))))
+positives <- results %>%
+  filter(Result == "Detected" & `Sample IDs` != "P")
+suspects <- results %>%
+  filter(Result == "Suspect")
 ```
 
-<!-- This project consisted of `{r} sample_number` PrioScout swabs. -->
-
 ## Methodology
-Swabs were run in 4 replicates. Results were compared against the negative plate control using a t-test. Metrics analyzed were maxpoint ratio (MPR) and maximum slope (MS). The p-values for each metric must be ≤ 0.05 and more than 50% of replicates must have crossed a threshold of twice the background fluorescence for a sample to be considered detected. If a sample was only positive for one or two of the three metrics, it was designated as "weak suspect" or "strong suspect", respectively.
+
+Swab pellets were resuspended in 500μL of 0.1% SDS/1X PBS. Samples were run by RT-QuIC in 4 replicates. Results were compared against the negative plate controls using a t-test with the alternative hypothesis being that a sample will have a larger value than the negative control. Metrics analyzed were maxpoint ratio (MPR) and maximum slope (MS). The p-values for each metric must have been ≤ 0.05 and at least 50% of replicates must have crossed a threshold of twice the background fluorescence for a sample to have been considered detected. If a sample had at least 50% of its replicates cross the threshold, but was negative for the other two metrics, it was labelled as "suspect".
+
+## Results
+
+-   Positives: `{r} paste(positives[["Sample IDs"]], sep = ", ")`
+-   Suspects: `{r} paste(suspects[["Sample IDs"]], sep = ", ")`
+
+\newpage
 
 ```{r, echo=FALSE}
+#| label: tbl-results
 
 background_list <- list(
   "Detected" = "#99023B",
-  "Strong Suspect" = "#7C2C62",
-  "Weak Suspect" = "#5F5589",
+  "Suspect" = "#5F5589",
   "Not Detected" = "white"
 )
 
 text_list = list(
   "Detected" = "white",
-  "Strong Suspect" = "white",
-  "Weak Suspect" = "white",
+  "Suspect" = "white",
   "Not Detected" = "black"
 )
 
 results %>%
-  select(c(1, 18:22)) %>%
+  select(c(1, 11:15)) %>%
   filter(!(`Sample IDs` %in% c("N", "P"))) %>%
   rename_all(~ str_replace(., "_", " ")) %>%
   mutate_all(
@@ -75,7 +84,7 @@ results %>%
     format = "latex",
     escape = FALSE,
     align = "c",
-    caption = "Results of RT-QuIC testing. Samples were given a result of 'Not Detected', 'Weak Suspect', 'Strong Suspect', or 'Detected' if it was positive for zero, one, two, or three metrics, respectively."
+    caption = "Results of RT-QuIC testing. Samples were given a result of 'Not Detected' or 'Detected' if it was positive for zero or all three metrics, respectively. If a sample was threshold positive (i.e. more than half of replicates crossed threshold) but was negative for either of the other two metrics, it was designated as 'Suspect'."
   ) %>%
   kable_styling(
     # full_width = TRUE,
@@ -84,5 +93,3 @@ results %>%
 ```
 
 ![](figures/summary.png)
-
-
