@@ -66,13 +66,13 @@ data %>%
   mutate(
     Result = factor(
       Result, 
-      levels = c("Not Detected", "Weak Suspect", "Strong Suspect", "Detected")
+      levels = c("Not Detected", "Suspect", "Detected")
     )
   ) %>%
   gather("key", "value", -c("Sample IDs", "Result")) %>%
   ggplot(aes(fct_inorder(`Sample IDs`), value, fill = Result)) +
   geom_boxplot() +
-  scale_fill_manual(values = c("#08D2FF", "#5F5589", "#7C2C62", "#99023B")) +
+  scale_fill_manual(values = c("#08D2FF", "#5F5589", "#99023B")) +
   facet_grid(vars(key), scales = "free") +
   facetted_pos_scales(y = y_scales) +
   labs(
@@ -82,15 +82,14 @@ data %>%
   theme(
     axis.title = element_blank(),
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-    axis.text.x = element_text(size = 14, angle = 45, hjust = 1, vjust = 1),
+    axis.text.x = element_text(size = 9, angle = 90, hjust = 1, vjust = 0.5),
     axis.text.y = element_text(size = 14),
     strip.text = element_text(size = 18),
-    # axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5),
     legend.position = "bottom",
     legend.title = element_text(size = 16),
     legend.text = element_text(size = 14)
   )
-ggsave("summary.png", path = "figures", width = 20, height = 30)
+ggsave("summary.png", path = "figures", width = 10.43, height = 15)
   
   
 
