@@ -13,24 +13,25 @@ library(ggh4x)
 
 
 
-files <- list.files("raw", ".xlsx", full.names = TRUE)
+files <- list.files("raw", ".xlsx", full.names = TRUE, recursive = TRUE)
 
 save_plates <- function(file) {
   
-  make_plate_name <- function(file) {
-    filename <- str_split_i(str_remove(file, ".xlsx"), "/", 2)
-    paste0("figures/plateviews/", filename, "_plateview.png")
-  }
+  filename <- file %>%
+    str_remove(".xlsx") %>%
+    str_split_i("/", str_count(., "/") + 1) %>%
+    paste0("plateview.png")
+  filename <- paste0("figures/plateviews/", filename)
   
-  filename <- make_plate_name(file)
   if (!file.exists(filename)) {
-    plate_view(get_real(file), get_sample_locations(file))
+    plate_view(get_real(file), get_sample_locations(file, dilution_bool = TRUE, dilution_fun = function(x) -log10(x)))
     ggsave(
       filename,
       width = 12, height = 8
     )
   } else{
-    print(paste("File:", filename, "already exists. "))
+    cat(paste("\nPlate view for", file, "already exists. "))
+    return()
   }
 }
 
