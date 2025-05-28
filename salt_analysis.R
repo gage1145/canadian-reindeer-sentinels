@@ -80,6 +80,8 @@ bp2_ttt <- df_sum[[which(df_sum$block_dilution == -2 & df_sum$`Sample IDs` == "B
 bp3_ttt <- df_sum[[which(df_sum$block_dilution == -3 & df_sum$`Sample IDs` == "BP"), "median_TtT"]]
 bp4_ttt <- df_sum[[which(df_sum$block_dilution == -4 & df_sum$`Sample IDs` == "BP"), "median_TtT"]]
 sp_ttt  <- df_sum[[which(df_sum$`Sample IDs` == "SP"), "median_TtT"]]
+s_ttt   <- df_sum[[which(df_sum$`Sample IDs` == "S"), "median_TtT"]]
+
 
 
 # Plot Real-time ----------------------------------------------------------
@@ -87,7 +89,11 @@ sp_ttt  <- df_sum[[which(df_sum$`Sample IDs` == "SP"), "median_TtT"]]
 
 
 # Positive curves
-samp_order <- c("P", "BP_-2", "BP_-3", "BP_-4", "SP", "N", "B_-2", "B_-3", "B_-4", "S")
+samp_order <- c(
+  "P", "BP_-2", "BP_-3", "BP_-4", "SP", 
+  "N", "B_-2", "B_-3", "B_-4", "S"
+)
+
 norm %>%
   # arrange(`Sample IDs`) %>%
   mutate(
@@ -113,6 +119,7 @@ norm %>%
   geom_vline(xintercept = bp3_ttt, color = "#e13000", linewidth = 1, linetype = "dashed") +
   geom_vline(xintercept = bp4_ttt, color = "#ffb800", linewidth = 1, linetype = "dashed") +
   geom_vline(xintercept = sp_ttt,  color = "#a40084", linewidth = 1, linetype = "dashed") +
+  # geom_vline(xintercept = s_ttt,   color = "#00c3ff", linewidth = 1, linetype = "dashed") +
   
   geom_line(linewidth = 1.2) +
   geom_hline(yintercept = 2, linetype = "dashed", linewidth = 1.2) +
@@ -144,7 +151,8 @@ norm %>%
     legend.direction = "horizontal",
     legend.position = c(.8, .95),
     strip.text = element_text(size = 14)
-  )
+  ) +
+  guides(color=guide_legend(nrow=2, byrow = TRUE))
 ggsave("figures/salt_real-time.png", width = 12, height = 10)
 
 
