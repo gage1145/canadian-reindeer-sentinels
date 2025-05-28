@@ -64,6 +64,24 @@ calcs <- data.frame(
 write.csv(calcs, "data/salt_calculations.csv", row.names = FALSE)
 
 
+
+# Summarize ---------------------------------------------------------------
+
+
+
+df_sum <- calcs %>%
+  group_by(`Sample IDs`, Dilutions, pos_dilution, block_dilution) %>%
+  summarize(
+    median_TtT = median(TtT)
+  )
+
+pos_ttt <- df_sum[[which(df_sum$pos_dilution == -3 & df_sum$`Sample IDs` == "P"), "median_TtT"]]
+bp2_ttt <- df_sum[[which(df_sum$block_dilution == -2 & df_sum$`Sample IDs` == "BP"), "median_TtT"]]
+bp3_ttt <- df_sum[[which(df_sum$block_dilution == -3 & df_sum$`Sample IDs` == "BP"), "median_TtT"]]
+bp4_ttt <- df_sum[[which(df_sum$block_dilution == -4 & df_sum$`Sample IDs` == "BP"), "median_TtT"]]
+sp_ttt  <- df_sum[[which(df_sum$`Sample IDs` == "SP"), "median_TtT"]]
+
+
 # Plot Real-time ----------------------------------------------------------
 
 
@@ -89,10 +107,22 @@ norm %>%
   ) %>% 
   arrange(`Sample IDs`) %>%
   ggplot(aes(`Time (h)`, `Normalized RFU`, color = `Sample IDs`)) +
+  
+  geom_vline(xintercept = pos_ttt, color = "#5b0085", linewidth = 1, linetype = "dashed") +
+  geom_vline(xintercept = bp2_ttt, color = "#c2003a", linewidth = 1, linetype = "dashed") +
+  geom_vline(xintercept = bp3_ttt, color = "#e13000", linewidth = 1, linetype = "dashed") +
+  geom_vline(xintercept = bp4_ttt, color = "#ffb800", linewidth = 1, linetype = "dashed") +
+  geom_vline(xintercept = sp_ttt,  color = "#a40084", linewidth = 1, linetype = "dashed") +
+  
   geom_line(linewidth = 1.2) +
   geom_hline(yintercept = 2, linetype = "dashed", linewidth = 1.2) +
   facet_grid(rows = vars(pos_dilution)) +
-  scale_color_manual(values = c("#5b0085", "#c2003a", "#e13000", "#ffb800", "#a40084", "#4f9e00", "#00af5d", "#00b6a0", "#00bed2", "#00c3ff")) +
+  scale_color_manual(
+    values = c(
+      "#5b0085", "#c2003a", "#e13000", "#ffb800", "#a40084", 
+      "#4f9e00", "#00af5d", "#00b6a0", "#00bed2", "#00c3ff"
+    )
+  ) +
   scale_x_log10(
     limits = c(5, 72), 
     breaks = seq(0, 75, 10),
@@ -110,6 +140,9 @@ norm %>%
     plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     legend.title = element_blank(),
     legend.text = element_text(size = 12),
+    legend.background = element_blank(),
+    legend.direction = "horizontal",
+    legend.position = c(.8, .95),
     strip.text = element_text(size = 14)
   )
 ggsave("figures/salt_real-time.png", width = 12, height = 10)
