@@ -72,8 +72,11 @@ write.csv(calcs, "data/salt_calculations.csv", row.names = FALSE)
 df_sum <- calcs %>%
   group_by(`Sample IDs`, Dilutions, pos_dilution, block_dilution) %>%
   summarize(
-    median_TtT = median(TtT)
+    median_TtT = median(TtT),
+    median_RAF = median(RAF)
   )
+
+write.csv(df_sum, "data/salt_summary.csv", row.names = FALSE)
 
 pos_ttt <- df_sum[[which(df_sum$pos_dilution == -3 & df_sum$`Sample IDs` == "P"), "median_TtT"]]
 bp2_ttt <- df_sum[[which(df_sum$block_dilution == -2 & df_sum$`Sample IDs` == "BP"), "median_TtT"]]
@@ -114,11 +117,11 @@ norm %>%
   arrange(`Sample IDs`) %>%
   ggplot(aes(`Time (h)`, `Normalized RFU`, color = `Sample IDs`)) +
   
-  geom_vline(xintercept = pos_ttt, color = "#5b0085", linewidth = 1, linetype = "dashed") +
-  geom_vline(xintercept = bp2_ttt, color = "#c2003a", linewidth = 1, linetype = "dashed") +
-  geom_vline(xintercept = bp3_ttt, color = "#e13000", linewidth = 1, linetype = "dashed") +
-  geom_vline(xintercept = bp4_ttt, color = "#ffb800", linewidth = 1, linetype = "dashed") +
-  geom_vline(xintercept = sp_ttt,  color = "#a40084", linewidth = 1, linetype = "dashed") +
+  geom_vline(xintercept = pos_ttt, color = "#5b0085", linewidth = 1, linetype = "dotted") +
+  geom_vline(xintercept = 8.6,     color = "#c2003a", linewidth = 1, linetype = "dotted") +
+  geom_vline(xintercept = 9.4,     color = "#e13000", linewidth = 1, linetype = "dotted") +
+  geom_vline(xintercept = bp4_ttt, color = "#ffb800", linewidth = 1, linetype = "dotted") +
+  geom_vline(xintercept = sp_ttt,  color = "#a40084", linewidth = 1, linetype = "dotted") +
   # geom_vline(xintercept = s_ttt,   color = "#00c3ff", linewidth = 1, linetype = "dashed") +
   
   geom_line(linewidth = 1.2) +
@@ -140,11 +143,11 @@ norm %>%
     limits = c(0, 14), 
     breaks = seq(0, 20, 2)
   ) +
-  ggtitle("Real-time Positive Comparisons") +
+  ggtitle("Real-time Curve Comparisons") +
   theme(
     axis.text = element_text(size = 12),
     axis.title = element_text(size = 14),
-    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     legend.title = element_blank(),
     legend.text = element_text(size = 12),
     legend.background = element_blank(),
@@ -153,7 +156,7 @@ norm %>%
     strip.text = element_text(size = 14)
   ) +
   guides(color=guide_legend(nrow=2, byrow = TRUE))
-ggsave("figures/salt_real-time.png", width = 12, height = 10)
+ggsave("figures/salt_real-time.png", width = 10.43, height = 8.69)
 
 
 
