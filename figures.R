@@ -19,14 +19,25 @@ save_plates <- function(file) {
   
   filename <- file %>%
     str_remove(".xlsx") %>%
-    str_split_i("/", str_count(., "/") + 1) %>%
-    paste0("plateview.png")
-  filename <- paste0("figures/plateviews/", filename)
+    str_split_i("/", str_count(., "/") + 1)
   
-  if (!file.exists(filename)) {
-    plate_view(get_real(file), get_sample_locations(file, dilution_bool = TRUE, dilution_fun = function(x) -log10(x)))
+  full_name <- paste0("figures/plateviews/", filename, "_plateview.png")
+  
+  show_dilution <- str_detect(filename, "block")
+  
+  if (!file.exists(full_name)) {
+    plate_view(
+      get_real(file), 
+      get_sample_locations(
+        file, 
+        dilution_bool = show_dilution, 
+        dilution_fun = function(x) -log10(x)
+      )
+    ) +
+      ggtitle(filename) +
+      theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5))
     ggsave(
-      filename,
+      full_name,
       width = 12, height = 8
     )
   } else{
