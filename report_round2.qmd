@@ -1,0 +1,181 @@
+---
+toc: false
+format:
+  pdf:
+    documentclass: report
+    header-includes:
+      - \usepackage{fontspec}
+      - \usepackage{caption}
+      # - \usepackage[margin=0.75in]{geometry}
+      - \AtBeginDocument{\floatplacement{table}{H}}
+    geometry: margin=0.75in
+    mainfont: "Calibri"
+    fontsize: 12pt
+format-links: false
+editor: source
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(readxl)
+library(stringr)
+library(kableExtra)
+
+main_theme <- theme(
+    axis.title = element_text(size = 16),
+    axis.text.x = element_text(size = 9, angle = 90, hjust = 1, vjust = 0.5),
+    axis.text.y = element_text(size = 14),
+    strip.text = element_text(size = 18),
+    legend.position = "bottom",
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14)
+  )
+```
+
+# Canadian Reindeer PrioScout Report (Round 2)
+
+![](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ17T5GtEiY8l0gX_l8AvlgKL54z92lDOwV9A&s){width="100%"}
+
+```{r Initialize, echo=FALSE, eval=TRUE, warning=FALSE}
+calcs <- read.csv("data/calculations.csv", check.names = FALSE) %>%
+  filter(`Random IDs` %in% 117:228)
+
+results <- read.csv("data/results.csv", check.names = FALSE) %>%
+  select(
+    c("Sample IDs", "Random IDs", "crossed", "thres_pos", 
+      "MPR_pvalue", "MS_pvalue", "AUC_pvalue", "Result")
+  ) %>%
+  mutate_at("Random IDs", as.integer) %>%
+  filter(`Random IDs` %in% 117:228)
+
+sample_number <- nrow(filter(results, !(`Sample IDs` %in% c("N", "P"))))
+positives <- results %>%
+  filter(Result == "Detected" & `Sample IDs` != "P")
+suspects <- results %>%
+  filter(Result == "Suspect")
+```
+
+## Methodology
+
+Swab pellets were re-suspended in 500μL of 0.1% SDS/1X PBS. Samples were run by RT-QuIC in 4 replicates for 72 hours at 42°C. Results were compared against the negative plate controls using a t-test with the alternative hypothesis being that a sample will have a larger value than the negative control. Metrics analyzed were maxpoint ratio (MPR), maximum slope (MS), and area under the curve (AUC). The p-values for each metric must have been ≤ 0.05 and at least 50% of replicates must have crossed a threshold of 3 times the background fluorescence for a sample to have been considered "detected". If a sample had at least 50% of its replicates cross the threshold, but was negative for any of the other three metrics, it was labelled as "suspect".
+
+\newpage
+
+## Swab Results
+Positive sample IDs: **`{r} paste(positives[["Random IDs"]], sep = ", ")`**; Suspect sample IDs: **`{r} paste(suspects[["Random IDs"]], sep = ", ")`**
+
+```{r pos-fig, echo=FALSE, message=FALSE, warning=FALSE}
+#| fig-width: 12
+#| fig-height: 6
+#| fig-cap: "Positive or suspect samples. Samples are identified by the blinded 'Random ID' provided by the collection team. A: The rates of amyloid formation for the positive samples. B: The real-time graphs."
+
+samples <- bind_rows(positives, suspects)
+data <- read.csv("data/data.csv", check.names = FALSE) %>%
+  filter(`Sample IDs` %in% samples$`Sample IDs`) %>%
+  left_join(results, by=c("Sample IDs"))
+
+rt_fig <- data %>%
+  ggplot(aes(Time, Norm, group=Wells, color=Result)) +
+  stat_smooth(formula=y ~ s(x, k=30), method="gam", se=FALSE) +
+  scale_x_continuous(limits=c(-0.1, 72.1), breaks=seq(0, 72, 6), expand=FALSE) +
+  scale_color_manual(values = c("#99023B", "#5F5589")) +
+  facet_grid(rows=vars(`Random IDs`)) +
+  labs(
+    y = "Normalized RFU",
+    x = "Time (h)"
+  ) +
+  main_theme +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle=0, hjust=0.5, vjust=1),
+  )
+
+box_fig <- calcs %>%
+  filter(`Sample IDs` %in% samples$`Sample IDs`) %>%
+  left_join(results, by=c("Sample IDs", "Random IDs")) %>%
+  mutate_at("Random IDs", as.factor) %>%
+  mutate(Result = factor(Result, levels=c("Not Detected", "Suspect", "Detected"))) %>%
+  ggplot(aes(
+    `Random IDs`,
+    RAF, 
+    fill = Result
+  )) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("#5F5589", "#99023B")) +
+  labs(
+    x = "Random IDs",
+    y = "Rate of Amyloid Formation (1/s)"
+  ) +
+  main_theme +
+  theme(
+    axis.text.x = element_text(angle=0, hjust=0.5, vjust=1),
+    legend.position = "none"
+  )
+
+ggarrange(box_fig, rt_fig, ncol=2, widths=c(1, 3), labels=c("A", "B"), font.label = list(size=20), common.legend = TRUE)
+```
+
+```{r Boxplot, echo=FALSE, message=FALSE, warning=FALSE}
+#| fig-width: 12
+#| fig-height: 6
+#| fig-cap: "Rates of amyloid formation (RAF) of each sample. A larger RAF indicates a higher prion load in the sample."
+
+calcs %>%
+  left_join(results, by=c("Sample IDs", "Random IDs")) %>%
+  mutate_at("Random IDs", as.factor) %>%
+  mutate(Result = factor(Result, levels=c("Not Detected", "Suspect", "Detected"))) %>%
+  ggplot(aes(
+    `Random IDs`,
+    RAF, 
+    fill = Result
+  )) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("#08D2FF", "#5F5589", "#99023B")) +
+  # facetted_pos_scales(y = y_scales) +
+  labs(
+    x = "Random IDs",
+    y = "Rate of Amyloid Formation (1/s)"
+  ) +
+  main_theme
+```
+
+\newpage
+
+```{r, echo=FALSE}
+#| label: tbl-results
+background_list <- list(
+  "Detected" = "#99023B",
+  "Suspect" = "#5F5589",
+  "Not Detected" = ifelse(knitr::is_html_output(), "none", "white")
+)
+
+text_list = list(
+  "Detected" = "white",
+  "Suspect" = "white",
+  "Not Detected" = "black"
+)
+
+results %>%
+  rename_all(~ str_replace(., "_", " ")) %>%
+  mutate_all(
+    ~ cell_spec(
+      .,
+      background = background_list[Result],
+      color = text_list[Result]
+    )
+  ) %>%
+  kable(
+    booktabs = TRUE,
+    longtable = TRUE,
+    linesep = "",
+    format = ifelse(knitr::is_html_output(), "html", "latex"),
+    escape = FALSE,
+    align = "c",
+    caption = "Results table of RT-QuIC testing. 'crossed': fraction of replicates above threshold; 'thres pos': at least half of replicates crossed threshold?; MPR: maxpoint ratio; MS: max slope; AUC: area under the curve."
+  ) %>%
+  kable_styling(
+    latex_options = c("hold_position", "repeat_header")
+  )
+```
