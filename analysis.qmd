@@ -1,0 +1,70 @@
+---
+title: "Analysis of PrioScouts in Reindeer Enclosures"
+format: html
+---
+
+## Project Structure
+
+### Animal Housing and Sampling
+
+Reindeer were inoculated with CWD$^+$ material, and were penned together in 4 separate pens. Pen 1 was the only group that did not receive the challenge; pens 2-4 did. PrioScouts were loaded with salt blocks that were shown not to interact in RT-QuIC kinetics, and placed in the pens. The animals would visit the PrioScout and lick the surface in an attempt to reach the salt block. The PrioScouts were swabbed weekly for 56 months with a gap between weeks 21-28.
+
+### RT-QuIC Testing
+
+Swabs were extracted following the environmental swab extraction protocol in MNPRO. Swab pellets were reconstituted in 500${\textmu}$L of sample dilution buffer (0.1% SDS, 1X PBS). Then, 2\$\\textmu\$L of diluent were added to 98\$\\textmu\$L of RT-QuIC master mix. Samples were run in 4 replicates, 42\$\\textdegree\$C, for 72hr. Shaking was done every other minute at 700rpm with a double orbital pattern.
+
+### Data Extraction
+
+Data was extracted from the MARS Excel output files using the [quicR](https://github.com/gage1145/quicR) package. This extracts the raw data and computes normalized fluorescent values as well as the estimated derivative of the normalized data. In addition, it calculates the maxpoint ratio (MPR), max slope (MS), area under the curve (AUC), time-to-threshold (TtT), and rate of amyloid formation (RAF). MPR, MS, and AUC are generally used for statistical analysis since they do not have default values; such is the case with TtT and RAF.
+
+## Data Analysis
+
+### Load Packages
+
+```{r load packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(quicR)
+library(skimr)
+```
+
+### Import Data Generated from `analysis.R`.
+
+```{r}
+df_ <- read.csv("data/calculations.csv", check.names=FALSE) %>%
+    mutate(
+        across(c("sample_id", "pen_number", "random_id", "wells", "rxn", "cell", "dilutions"), 
+        as.factor)
+    )
+skim(df_)
+```
+
+### Visualize the Data
+
+```{r}
+df_ %>%
+    group_by(pen_number, week, mpi, rxn, dilutions) %>%
+    summarize_at(c("MPR", "MS", "AUC", "RAF"), mean) %>%
+    filter(dilutions == "10") %>%
+    pivot_longer(c(MPR, MS, AUC, RAF)) %>%
+    ggplot(aes(week, value, color=pen_number)) +
+        geom_line() +
+        facet_grid(vars(name), scales="free")
+```
+
+### Are there any effects?
+
+```{r}
+library(lme4)
+library(emmeans)
+
+
+auc_form <- AUC ~ week * pen_number + (1 | random_id)
+
+auc_mod <- lmer(auc_form, df_)
+summary(auc_mod)
+
+auc_emm <- emmeans(auc_mod, ~ week + pen_number)
+summary(auc_emm)
+contrast(auc_emm)
+```
