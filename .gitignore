@@ -49,3 +49,6 @@ po/*~
 rsconnect/
 
 nul
+analysis_files/
+*.html
+*.pdf
