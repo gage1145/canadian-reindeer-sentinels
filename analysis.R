@@ -6,9 +6,7 @@ library(openxlsx)
 library(readxl)
 
 
-
 # Curation ----------------------------------------------------------------
-
 
 
 files <- list.files("raw", ".xlsx", full.names = TRUE)
@@ -23,8 +21,8 @@ metadata <- read_xlsx("data/metadata.xlsx") %>%
 
 curate <- function(file) {
   filename <- file %>%
-    str_split_i("/", 2) %>%
-    str_split_i("\\.", 1)
+    str_split_i("/", str_count(., "/") + 1) %>%
+    str_remove(".xlsx")
   cli::cli_inform(filename)
   get_quic(file) %>%
     mutate(
@@ -44,112 +42,61 @@ df_clean <- df_ %>%
 write.csv(df_clean, "data/data.csv", row.names = FALSE)
 
 
-
 # Calculations ------------------------------------------------------------
-
 
 
 groupings <- c("sample_id", "dilutions", "wells", "rxn")
 
 calcs <- df_clean %>%
   calculate_metrics(
-    "sample_id", "dilutions", "wells", "rxn", 
-    threshold = 3, time_col = "time", ttt_values = "norm", 
-    auc_values = "norm", norm_col = "norm", deriv_col = "deriv"
+    groupings,
+    threshold = 3,
+    time_col = "time",
+    ttt_values = "norm",
+    auc_values = "norm",
+    norm_col = "norm",
+    deriv_col = "deriv"
   ) %>%
   left_join(metadata) %>%
   arrange(random_id)
 write.csv(calcs, "data/calculations.csv", row.names = FALSE)
 
 
-
 # Analysis ----------------------------------------------------------------
 
 
-  
-# samples <- unique(calcs$sample_id)
+library(lme4)
+library(emmeans)
 
-# get_results <- function(samples, metric) {
-#   t_test <- function(sample) {
-#     data <- filter(calcs, `Sample IDs` %in% c(sample, "N"))
-#     t.test(
-#       data[[metric]], 
-#       data[which(data$`Sample IDs` == "N"),][[metric]],
-#       alternative = "greater"
-#     )
-#   }
-  
-#   sapply(samples, t_test) %>%
-#     # bind_rows() %>%
-#     t() %>%
-#     as.data.frame() %>%
-#     mutate(
-#       `Sample IDs` = ordered(
-#         rownames(.),
-#         levels = samples
-#       ),
-#       p.value = signif(as.numeric(p.value), 3)
-#     ) %>%
-#     relocate(`Sample IDs`, 1) %>%
-#     select(`Sample IDs`, p.value) %>%
-#     arrange(`Sample IDs`)
-# }
+df_sum <- calcs %>%
+  filter(!is.na(pen_number))
 
-# results_MPR <- get_results(samples, "MPR") %>%
-#   rename(MPR_pvalue = p.value) %>%
-#   left_join(metadata)
-# results_MS  <- get_results(samples, "MS") %>%
-#   rename(MS_pvalue = p.value) %>%
-#   left_join(metadata)
-# results_AUC  <- get_results(samples, "AUC") %>%
-#   rename(AUC_pvalue = p.value) %>%
-#   left_join(metadata)
+auc_formula <- AUC ~ mpi * pen_number + (1 | random_id) + (1 | rxn)
+mpr_formula <- MPR ~ mpi * pen_number + (1 | random_id) + (1 | rxn)
+ms_formula  <- MS  ~ mpi * pen_number + (1 | random_id) + (1 | rxn)
 
+auc_mod <- lmer(auc_formula, df_sum)
+mpr_mod <- lmer(mpr_formula, df_sum)
+ms_mod  <- lmer(ms_formula,  df_sum)
 
+mpis <- sort(unique(df_sum$mpi))
 
-# Summary -----------------------------------------------------------------
+auc_emm <- emmeans(auc_mod, ~ pen_number | mpi, at = list(mpi = mpis))
+mpr_emm <- emmeans(mpr_mod, ~ pen_number | mpi, at = list(mpi = mpis))
+ms_emm  <- emmeans(ms_mod,  ~ pen_number | mpi, at = list(mpi = mpis))
 
+auc_con <- contrast(auc_emm, method = "trt.vs.ctrl", ref = 1)
+mpr_con <- contrast(mpr_emm, method = "trt.vs.ctrl", ref = 1)
+ms_con  <- contrast(ms_emm,  method = "trt.vs.ctrl", ref = 1)
 
-# counts <- calcs %>%
-#   group_by(`Sample IDs`) %>%
-#   summarize(
-#     counts = n(),
-#     crossed = sum(crossed) / counts,
-#     thres_pos = crossed >= 0.5
-#   )
+auc_sum <- summary(auc_con, adjust = "none", side = ">") %>% mutate(metric = "AUC")
+mpr_sum <- summary(mpr_con, adjust = "none", side = ">") %>% mutate(metric = "MPR")
+ms_sum  <- summary(ms_con,  adjust = "none", side = ">") %>% mutate(metric = "MS")
 
-# results <- calcs %>%
-#   group_by(`Sample IDs`, `Pen #`, Week) %>%
-#   summarise_at(c("MPR", "MS", "AUC", "TtT", "RAF"), list(mean=mean, sd=sd)) %>%
-#   left_join(counts) %>%
-#   left_join(results_MPR) %>%
-#   left_join(results_MS) %>%
-#   left_join(results_AUC) %>%
-#   mutate(
-#     # `Sample IDs` = ordered(
-#     #   `Sample IDs`,
-#     #   levels = samples
-#     # ),
-#     Result = ifelse(
-#       MPR_pvalue < 0.05 & MS_pvalue < 0.05 & AUC_pvalue < 0.05 & thres_pos,
-#       "Detected",
-#       ifelse(
-#         thres_pos & (MPR_pvalue > 0.05 | MS_pvalue > 0.05 | AUC_pvalue > 0.05),
-#         "Suspect",
-#         "Not Detected"
-#       )
-#     )
-#   ) %>%
-#   arrange(`Sample IDs`)
+results <- bind_rows(auc_sum, mpr_sum, ms_sum) %>%
+  arrange(mpi, contrast, metric) %>%
+  group_by(mpi) %>%
+  mutate(p.adj = p.adjust(p.value, method = "holm")) %>%
+  ungroup()
 
-# write.csv(results, "data/results.csv", row.names = FALSE)
-
-
-
-
-
-
-
-
-
-
+write.csv(results, "data/results.csv", row.names = FALSE)

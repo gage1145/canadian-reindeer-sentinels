@@ -70,7 +70,7 @@ background_list <- list(
   "Not Detected" = ifelse(knitr::is_html_output(), "none", "white")
 )
 
-text_list = list(
+text_list <- list(
   "Detected" = "white",
   "Suspect" = "white",
   "Not Detected" = "black"
@@ -125,12 +125,12 @@ salt_results %>%
     `Sample IDs` = factor(`Sample IDs`, levels = samp_order),
   ) %>%
   arrange(`Sample IDs`) %>%
-  mutate_at(c("median_TtT", "median_RAF"), ~signif(., 4)) %>%
+  mutate_at(c("median_TtT", "median_RAF"), ~ signif(., 4)) %>%
   kable(
     booktabs = TRUE,
     longtable = TRUE,
     linesep = "",
-    format = "html",# "latex",
+    format = "html", # "latex",
     escape = FALSE,
     align = "c",
     caption = "Summary table of the salt block results. Kinetics were compared using time-to-threshold (TtT) and its inverse, rate of amyloid formation (RAF). Dilutions are represented in log form. pos_dilution: dilution factor of positive control; block_dilution: dilution factor of salt block; N: negative control; P: positive control; B: salt block; BP: salt block spiked with positive control; S: salt block swab; SP: salt block swab spiked with positive control."

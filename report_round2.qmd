@@ -24,14 +24,14 @@ library(stringr)
 library(kableExtra)
 
 main_theme <- theme(
-    axis.title = element_text(size = 16),
-    axis.text.x = element_text(size = 9, angle = 90, hjust = 1, vjust = 0.5),
-    axis.text.y = element_text(size = 14),
-    strip.text = element_text(size = 18),
-    legend.position = "bottom",
-    legend.title = element_text(size = 16),
-    legend.text = element_text(size = 14)
-  )
+  axis.title = element_text(size = 16),
+  axis.text.x = element_text(size = 9, angle = 90, hjust = 1, vjust = 0.5),
+  axis.text.y = element_text(size = 14),
+  strip.text = element_text(size = 18),
+  legend.position = "bottom",
+  legend.title = element_text(size = 16),
+  legend.text = element_text(size = 14)
+)
 ```
 
 # Canadian Reindeer PrioScout Report (Round 2)
@@ -44,8 +44,10 @@ calcs <- read.csv("data/calculations.csv", check.names = FALSE) %>%
 
 results <- read.csv("data/results.csv", check.names = FALSE) %>%
   select(
-    c("Sample IDs", "Random IDs", "crossed", "thres_pos", 
-      "MPR_pvalue", "MS_pvalue", "AUC_pvalue", "Result")
+    c(
+      "Sample IDs", "Random IDs", "crossed", "thres_pos",
+      "MPR_pvalue", "MS_pvalue", "AUC_pvalue", "Result"
+    )
   ) %>%
   mutate_at("Random IDs", as.integer) %>%
   filter(`Random IDs` %in% 117:228)
@@ -74,14 +76,14 @@ Positive sample IDs: **`{r} paste(positives[["Random IDs"]], sep = ", ")`**; Sus
 samples <- bind_rows(positives, suspects)
 data <- read.csv("data/data.csv", check.names = FALSE) %>%
   filter(`Sample IDs` %in% samples$`Sample IDs`) %>%
-  left_join(results, by=c("Sample IDs"))
+  left_join(results, by = c("Sample IDs"))
 
 rt_fig <- data %>%
-  ggplot(aes(Time, Norm, group=Wells, color=Result)) +
-  stat_smooth(formula=y ~ s(x, k=30), method="gam", se=FALSE) +
-  scale_x_continuous(limits=c(-0.1, 72.1), breaks=seq(0, 72, 6), expand=FALSE) +
+  ggplot(aes(Time, Norm, group = Wells, color = Result)) +
+  stat_smooth(formula = y ~ s(x, k = 30), method = "gam", se = FALSE) +
+  scale_x_continuous(limits = c(-0.1, 72.1), breaks = seq(0, 72, 6), expand = FALSE) +
   scale_color_manual(values = c("#99023B", "#5F5589")) +
-  facet_grid(rows=vars(`Random IDs`)) +
+  facet_grid(rows = vars(`Random IDs`)) +
   labs(
     y = "Normalized RFU",
     x = "Time (h)"
@@ -89,17 +91,17 @@ rt_fig <- data %>%
   main_theme +
   theme(
     legend.position = "none",
-    axis.text.x = element_text(angle=0, hjust=0.5, vjust=1),
+    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1),
   )
 
 box_fig <- calcs %>%
   filter(`Sample IDs` %in% samples$`Sample IDs`) %>%
-  left_join(results, by=c("Sample IDs", "Random IDs")) %>%
+  left_join(results, by = c("Sample IDs", "Random IDs")) %>%
   mutate_at("Random IDs", as.factor) %>%
-  mutate(Result = factor(Result, levels=c("Not Detected", "Suspect", "Detected"))) %>%
+  mutate(Result = factor(Result, levels = c("Not Detected", "Suspect", "Detected"))) %>%
   ggplot(aes(
     `Random IDs`,
-    RAF, 
+    RAF,
     fill = Result
   )) +
   geom_boxplot() +
@@ -110,11 +112,11 @@ box_fig <- calcs %>%
   ) +
   main_theme +
   theme(
-    axis.text.x = element_text(angle=0, hjust=0.5, vjust=1),
+    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1),
     legend.position = "none"
   )
 
-ggarrange(box_fig, rt_fig, ncol=2, widths=c(1, 3), labels=c("A", "B"), font.label = list(size=20), common.legend = TRUE)
+ggarrange(box_fig, rt_fig, ncol = 2, widths = c(1, 3), labels = c("A", "B"), font.label = list(size = 20), common.legend = TRUE)
 ```
 
 ```{r Boxplot, echo=FALSE, message=FALSE, warning=FALSE}
@@ -123,12 +125,12 @@ ggarrange(box_fig, rt_fig, ncol=2, widths=c(1, 3), labels=c("A", "B"), font.labe
 #| fig-cap: "Rates of amyloid formation (RAF) of each sample. A larger RAF indicates a higher prion load in the sample."
 
 calcs %>%
-  left_join(results, by=c("Sample IDs", "Random IDs")) %>%
+  left_join(results, by = c("Sample IDs", "Random IDs")) %>%
   mutate_at("Random IDs", as.factor) %>%
-  mutate(Result = factor(Result, levels=c("Not Detected", "Suspect", "Detected"))) %>%
+  mutate(Result = factor(Result, levels = c("Not Detected", "Suspect", "Detected"))) %>%
   ggplot(aes(
     `Random IDs`,
-    RAF, 
+    RAF,
     fill = Result
   )) +
   geom_boxplot() +
@@ -151,7 +153,7 @@ background_list <- list(
   "Not Detected" = ifelse(knitr::is_html_output(), "none", "white")
 )
 
-text_list = list(
+text_list <- list(
   "Detected" = "white",
   "Suspect" = "white",
   "Not Detected" = "black"

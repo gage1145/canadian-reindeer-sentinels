@@ -31,11 +31,13 @@ library(skimr)
 ### Import Data Generated from `analysis.R`.
 
 ```{r}
-df_ <- read.csv("data/calculations.csv", check.names=FALSE) %>%
-    mutate(
-        across(c("sample_id", "pen_number", "random_id", "wells", "rxn", "cell", "dilutions"), 
-        as.factor)
+df_ <- read.csv("data/calculations.csv", check.names = FALSE) %>%
+  mutate(
+    across(
+      c("sample_id", "pen_number", "random_id", "wells", "rxn", "cell", "dilutions"),
+      as.factor
     )
+  )
 skim(df_)
 ```
 
@@ -43,13 +45,13 @@ skim(df_)
 
 ```{r}
 df_ %>%
-    group_by(pen_number, week, mpi, rxn, dilutions) %>%
-    summarize_at(c("MPR", "MS", "AUC", "RAF"), mean) %>%
-    filter(dilutions == "10") %>%
-    pivot_longer(c(MPR, MS, AUC, RAF)) %>%
-    ggplot(aes(week, value, color=pen_number)) +
-        geom_line() +
-        facet_grid(vars(name), scales="free")
+  group_by(pen_number, week, mpi, rxn, dilutions) %>%
+  summarize_at(c("MPR", "MS", "AUC", "RAF"), mean) %>%
+  filter(dilutions == "10") %>%
+  pivot_longer(c(MPR, MS, AUC, RAF)) %>%
+  ggplot(aes(week, value, color = pen_number)) +
+  geom_line() +
+  facet_grid(vars(name), scales = "free")
 ```
 
 ### Are there any effects?
