@@ -2,7 +2,7 @@ library(tidyverse)
 library(janitor)
 library(quicR)
 library(stringr)
-library(openxlsx)
+library(skimr)
 library(readxl)
 
 
@@ -14,7 +14,7 @@ files <- list.files("raw", ".xlsx", full.names = TRUE)
 metadata <- read_xlsx("data/metadata.xlsx") %>%
   clean_names() %>%
   mutate(
-    across(c("sample_id", "random_id", "pen_number"), as.factor),
+    across(c("sample_id", "random_id", "pen_number"), ~ as.factor(str_squish(.))),
     across(c("week", "mpi"), as.integer)
   ) %>%
   select(sample_id, random_id, pen_number, week, mpi, cell)
@@ -26,7 +26,7 @@ curate <- function(file) {
   cli::cli_inform(filename)
   get_quic(file) %>%
     mutate(
-      `Sample IDs` = trimws(as.character(`Sample IDs`)),
+      `Sample IDs` = str_remove(trimws(as.character(`Sample IDs`)), "^S-"),
       `Rxn IDs` = filename
     ) %>%
     relocate(`Rxn IDs`, .after = `Sample IDs`) %>%
@@ -59,6 +59,8 @@ calcs <- df_clean %>%
   ) %>%
   left_join(metadata) %>%
   arrange(random_id)
+skim(calcs)
+
 write.csv(calcs, "data/calculations.csv", row.names = FALSE)
 
 
