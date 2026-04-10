@@ -5,6 +5,7 @@ library(stringr)
 library(scales)
 library(ggpubr)
 library(ggsignif)
+library(broom)
 
 
 main_theme <- theme(
@@ -12,22 +13,70 @@ main_theme <- theme(
   axis.title = element_text(size = 20),
   axis.text = element_text(size = 16),
   strip.text = element_text(size = 20),
-  legend.title = element_text(size = 16, hjust = 0.5),
-  legend.text = element_text(size = 12),
+  legend.title = element_text(size = 20, hjust = 0.5),
+  legend.text = element_text(size = 16),
   panel.grid = element_blank()
 )
+
+
+data <- read.csv("data/calculations.csv", check.names = FALSE) %>%
+  mutate(pen_number = as.factor(pen_number)) %>%
+  filter(!is.na(pen_number))
+
+
+# Principal Component Analysis -------------------------------------------
+
+
+cor(select(data, MPR, MS, AUC))
+
+pca_res <- data %>%
+  select(MPR, MS, AUC, week) %>%
+  prcomp(scale. = TRUE)
+
+explained_var_ratio <- summary(pca_res)[["importance"]]["Proportion of Variance",] * 100
+
+pca_df <- as.data.frame(pca_res$x) %>%
+  mutate(
+    across(c(PC1), ~ -.),
+    pen_number = data$pen_number,
+    mpi = data$mpi
+  )
+
+pca_long <- pca_df %>%
+  select(starts_with("PC"), pen_number, mpi) %>%
+  mutate(row_id = row_number()) %>%
+  pivot_longer(starts_with("PC"), names_to = "PC", values_to = "value") 
+
+pca_comp_df <- inner_join(
+  pca_long %>% rename(x_pc = PC, x_val = value),
+  pca_long %>% rename(y_pc = PC, y_val = value),
+  relationship = "many-to-many"
+) %>%
+  filter(x_pc != y_pc)
+
+pca_comp_df %>%
+  ggplot(aes(x_val, y_val, color = pen_number)) +
+  geom_point() +
+  facet_grid(rows = vars(y_pc), cols = vars(x_pc), scales = "free") +
+  labs(
+    x = NULL, y = NULL,
+    title = "Principal Component Pairs",
+    color = "Pen"
+  ) +
+  main_theme
+
+ggsave("pca.png", path="figures", width=12, height=12)
+
 
 # Summary Figures ---------------------------------------------------------
 
 
-data <- read.csv("data/calculations.csv", check.names = FALSE) %>%
-  mutate(pen_number = as.factor(pen_number))
-
 data_sum <- data %>%
+  mutate(PCA = pca_df$PC1) %>%
   summarize(
-    across(c(MPR, MS, AUC), list(mean = mean, stdev = sd)), 
+    across(c(MPR, MS, AUC, PCA), list(mean = mean, stdev = sd)), 
     count = n(),
-    .by = c(pen_number, mpi)
+    .by = c(pen_number, mpi, week)
   ) %>%
   pivot_longer(
     cols = matches("[A-Z]{2,3}_[a-z]+", ignore.case = FALSE),
@@ -50,26 +99,31 @@ sig_points <- data_joined %>% filter(p.adj < 0.05)
 data_norm <- data_sum %>%
   filter(!is.na(pen_number)) %>%
   pivot_wider(names_from=pen_number, values_from=c(mean, stdev)) %>%
-  mutate(across(matches("mean_[2-4]"), ~ . - mean_1)) %>%
+  mutate(across(matches("mean_[2-5]"), ~ . / mean_1)) %>%
   pivot_longer(matches("^[a-z]+_\\d$"), names_to = c(".value", "pen_number"), names_sep = "_") %>%
   mutate(pen_number = factor(pen_number, c("1", "2", "3", "4"), c("Pen 1", "Pen 2", "Pen 3", "Pen 4")))
 
 data_norm %>%
-  filter(!is.na(pen_number) & pen_number != "Pen 1", !is.na(mean)) %>%
-  arrange(mpi) %>%
-  group_by(metric) %>%
-  mutate(across(c(mean, stdev), ~ scale(., FALSE)), metric = as.factor(metric)) %>%
-  ggplot(aes(mpi, mean, color = metric, group = metric)) +
+  filter(
+    !is.na(pen_number) & pen_number != "Pen 1", 
+    !is.na(mean),
+    metric == "COMBINED"
+  ) %>%
+  arrange(week) %>%
+  ggplot(aes(week, mean, group = pen_number)) +
+  geom_point(size = 2, color="#666666") +
+  stat_smooth(
+    method = "glm",
+    linewidth=1.5, color="red") +
   geom_hline(
-    yintercept = 0, linetype="dashed", linewidth = 1, color="black", alpha = 0.5
+    yintercept = 1, linetype="dashed", linewidth = 1.5, color="blue"
   ) +
-  geom_path(linewidth=1) +
-  geom_point(size = 2, alpha = 0.5) +
-  scale_x_continuous(breaks = seq(0, 13, 1)) +
-  facet_grid(rows = vars(pen_number)) +
-  scale_color_brewer(palette = "Set1", name = "Metric") +
+  stat_regline_equation(aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), size = 6, label.x=0, label.y=5) +
+  scale_x_continuous(breaks = seq(0, max(data_norm$week), 4)) +
+  scale_y_continuous(limits = c(0, 5)) +
+  facet_grid(cols = vars(pen_number), scales="free_y") +
   labs(
-    x = "Months Post-Inoculation",
+    x = "Weeks Post-Inoculation",
     y = "Normalized Mean Value",
     title = "RT-QuIC Metrics Over Time by Pen",
   ) +
@@ -108,6 +162,7 @@ data %>%
   )
 
 ggsave("figures/comparisons_over_time.png", width = 16, height = 12, dpi = 300)
+
 
 # Figure 2: Significance heatmap ------------------------------------------
 
