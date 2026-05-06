@@ -9,13 +9,12 @@ library(broom)
 
 
 main_theme <- theme(
-  plot.title = element_text(size = 30, hjust = 0.5),
-  axis.title = element_text(size = 20),
-  axis.text = element_text(size = 16),
-  strip.text = element_text(size = 20),
-  legend.title = element_text(size = 20, hjust = 0.5),
-  legend.text = element_text(size = 16),
-  panel.grid = element_blank()
+	plot.title = element_text(size=30),
+	axis.title = element_text(size=24),
+	axis.text = element_text(size=20),
+	legend.title = element_text(size=24),
+	legend.text = element_text(size=20),
+	strip.text = element_text(size=24)
 )
 
 
@@ -30,7 +29,7 @@ data <- read.csv("data/calculations.csv", check.names = FALSE) %>%
 cor(select(data, MPR, MS, AUC))
 
 pca_res <- data %>%
-  select(MPR, MS, AUC, week) %>%
+  select(MPR, MS, AUC) %>%
   prcomp(scale. = TRUE)
 
 explained_var_ratio <- summary(pca_res)[["importance"]]["Proportion of Variance",] * 100
@@ -54,6 +53,7 @@ pca_comp_df <- inner_join(
 ) %>%
   filter(x_pc != y_pc)
 
+# PCA Figure
 pca_comp_df %>%
   ggplot(aes(x_val, y_val, color = pen_number)) +
   geom_point() +
@@ -64,8 +64,55 @@ pca_comp_df %>%
     color = "Pen"
   ) +
   main_theme
-
 ggsave("pca.png", path="figures", width=12, height=12)
+
+# PC1 with MPI and Pen #
+scalar <- abs(min(-pca_long$value[which(pca_long$PC == "PC1")])) + 1
+
+pca_long_sum <- pca_long %>%
+  filter(PC == "PC1") %>%
+  mutate(
+    value = log(-value + scalar),
+    inoculated = pen_number != "1"
+  ) %>%
+  summarize(
+    mean_value = mean(value),
+    stdev = sd(value),
+    upper = mean_value + stdev,
+    lower = mean_value - stdev,
+    lower = ifelse(lower < 0, 0, lower),
+    .by = c(mpi, inoculated)
+  )
+
+pca_long %>%
+  filter(PC == "PC1") %>%
+  mutate(
+    value = log(-value + scalar),
+    inoculated = pen_number != "1"
+  ) %>%
+  ggplot(aes(mpi, value, color = inoculated)) +
+  geom_ribbon(aes(y=mean_value, ymin=lower, ymax=upper, fill = inoculated), data = pca_long_sum, alpha = 0.1, linetype=NA, show.legend = FALSE) +
+  geom_line(aes(y=mean_value), data=pca_long_sum, alpha = 0.5, show.legend = FALSE) +
+  geom_point(size = 3, alpha = 0.25, position = position_jitter(0.2)) +
+  scale_color_manual(values = c("navy", "red")) +
+  scale_fill_manual(values = c("navy", "red")) +
+  scale_x_continuous(breaks=seq(0, 60, 1)) +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  # facet_grid(cols = vars(cutoff), rows = vars(Tissue)) +
+  labs(
+    x = "Months",
+    y = sprintf("Log(pc1 + %s)", round(scalar, 2)),
+    color = "Inoculated"
+  ) +
+  main_theme +
+  theme(
+    plot.title = element_text(hjust=0.5),
+    legend.position = "top",
+    legend.text=element_text(size=20),
+    axis.text = element_text(size = 16)
+  )
+ggsave("pca_mpi.png", path="figures", width=12, height=9)
+
 
 
 # Summary Figures ---------------------------------------------------------
@@ -107,24 +154,25 @@ data_norm %>%
   filter(
     !is.na(pen_number) & pen_number != "Pen 1", 
     !is.na(mean),
-    metric == "COMBINED"
+    metric == "PCA"
   ) %>%
   arrange(week) %>%
   ggplot(aes(week, mean, group = pen_number)) +
-  geom_point(size = 2, color="#666666") +
+  geom_point(size = 2, color="red") +
   stat_smooth(
     method = "glm",
     linewidth=1.5, color="red") +
   geom_hline(
     yintercept = 1, linetype="dashed", linewidth = 1.5, color="blue"
   ) +
-  stat_regline_equation(aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), size = 6, label.x=0, label.y=5) +
+  # stat_regline_equation(aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), size = 6, label.x=0, label.y=5) +
+  stat_cor(aes(label = paste(..p.label.., ..rr.label.., sep = "~','~")), size = 9, label.x=0, label.y=4.8) +
   scale_x_continuous(breaks = seq(0, max(data_norm$week), 4)) +
   scale_y_continuous(limits = c(0, 5)) +
-  facet_grid(cols = vars(pen_number), scales="free_y") +
+  facet_grid(rows = vars(pen_number), scales="free_y") +
   labs(
     x = "Weeks Post-Inoculation",
-    y = "Normalized Mean Value",
+    y = "Normalized Mean PC1",
     title = "RT-QuIC Metrics Over Time by Pen",
   ) +
   main_theme
