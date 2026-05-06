@@ -146,7 +146,7 @@ sig_points <- data_joined %>% filter(p.adj < 0.05)
 data_norm <- data_sum %>%
   filter(!is.na(pen_number)) %>%
   pivot_wider(names_from=pen_number, values_from=c(mean, stdev)) %>%
-  mutate(across(matches("mean_[2-5]"), ~ . / mean_1)) %>%
+  mutate(across(matches("mean_[2-5]"), ~ . - mean_1)) %>%
   pivot_longer(matches("^[a-z]+_\\d$"), names_to = c(".value", "pen_number"), names_sep = "_") %>%
   mutate(pen_number = factor(pen_number, c("1", "2", "3", "4"), c("Pen 1", "Pen 2", "Pen 3", "Pen 4")))
 
@@ -158,28 +158,27 @@ data_norm %>%
   ) %>%
   arrange(week) %>%
   ggplot(aes(week, mean, group = pen_number)) +
-  geom_point(size = 2, color="red") +
-  stat_smooth(
-    method = "glm",
-    linewidth=1.5, color="red") +
   geom_hline(
-    yintercept = 1, linetype="dashed", linewidth = 1.5, color="blue"
+    yintercept = 0, linetype="dashed", linewidth = 1.5, color="blue"
   ) +
+  geom_point(size = 4, color="red") +
+  geom_segment(aes(xend = week, y = 0, yend = mean), color = "red", linewidth=2) +
+  # stat_smooth(
+  #   method = "glm",
+  #   linewidth=1.5, color="red") +
   # stat_regline_equation(aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), size = 6, label.x=0, label.y=5) +
-  stat_cor(aes(label = paste(..p.label.., ..rr.label.., sep = "~','~")), size = 9, label.x=0, label.y=4.8) +
+  stat_cor(aes(label = paste(..p.label.., ..rr.label.., sep = "~','~")), size = 9, label.x=0, label.y = 5) +
   scale_x_continuous(breaks = seq(0, max(data_norm$week), 4)) +
-  scale_y_continuous(limits = c(0, 5)) +
+  scale_y_continuous(limits = c(-7.5, 7.5), breaks=seq(-8, 8, 2), expand=expansion()) +
   facet_grid(rows = vars(pen_number), scales="free_y") +
   labs(
     x = "Weeks Post-Inoculation",
     y = "Normalized Mean PC1",
-    title = "RT-QuIC Metrics Over Time by Pen",
   ) +
   main_theme
 
 ggsave("figures/metrics_over_time.png", width = 16, height = 12, dpi = 300)
 
-# pen_comparisons <- t(expand.grid(paste("Pen", seq(2, 4)), "Pen 1", stringsAsFactors = FALSE))
 pen_comparisons <- list(c("Pen 1", "Pen 2"), c("Pen 1", "Pen 3"), c("Pen 1", "Pen 4"))
 
 data %>%
