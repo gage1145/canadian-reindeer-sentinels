@@ -209,34 +209,3 @@ data %>%
   )
 
 ggsave("figures/comparisons_over_time.png", width = 16, height = 12, dpi = 300)
-
-
-# Figure 2: Significance heatmap ------------------------------------------
-
-
-results %>%
-  filter(!is.na(p.adj)) %>%
-  mutate(metric = factor(metric, levels = c("MPR", "MS", "AUC"))) %>%
-  ggplot(aes(mpi, metric, fill = -log10(p.adj), label = paste("p =", signif(p.adj, 3)))) +
-  geom_tile(color="black") +
-  geom_text(
-    size = 5, color = "white", fontface = "bold"
-  ) +
-  facet_grid(vars(paste0("Pen #", pen_number))) +
-  scale_fill_gradient(
-    low = "darkcyan", high = "#c0392b",
-    limits = c(-log10(1), -log10(0.01)),
-    name = expression(-log[10](p[adj]))
-  ) +
-  scale_x_continuous(breaks = seq(0, 13, 1), expand = FALSE) +
-  scale_y_discrete(expand=FALSE) +
-  labs(
-    x = "Months Post-Inoculation",
-    title = "Significance Over Time vs. Negative Control (Pen 1)"
-  ) +
-  main_theme +
-  theme(
-    axis.title.y = element_blank()
-  )
-
-ggsave("figures/significance_heatmap.png", width = 16, height = 12, dpi = 300)
